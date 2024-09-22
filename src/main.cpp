@@ -12,6 +12,14 @@
 #define METERS_PER_REV 0.4826
 #define WHEEL_WIDTH 0.2032
 
+// Timing vars
+const double TARGET_RAD_PER_SEC = 0.5;
+unsigned long desired_Ts_ms = 25;
+unsigned long last_time_ms;
+
+double loop_delay = 1500;
+long lastTime = 0;
+
 // Control system vars
 int numOne = 0;
 int numTwo = 0;
@@ -19,77 +27,48 @@ int numTwo = 0;
 int target1 = 0;
 int target2 = 0;
 
-double loop_delay = 1500;
-long lastTime = 0;
-
 bool first = true;
 
-long lastMeas1 = 0;
-long lastMeas2 = 0;
+long lastMeasRight = 0;
+long lastMeasLeft = 0;
 
-long lastA1 = 0;
-long lastB1 = 0;
-
-long lastA2 = 0;
-long lastB2 = 0;
-
-long rightPos = 0;
+long rightPos = 0; // Position Count
 long leftPos = 0;
 
 long prevLooprightPos = 0;
 long prevLoopleftPos = 0;
-
-// Localization vars
-
-const double TARGET_RAD_PER_SEC = 0.5;
-unsigned long desired_Ts_ms = 25;
-unsigned long last_time_ms;
-int lastA1 = 0;
-long lastB1 = 0;
-long rightPos = 0;
-long leftPos = 0; // Position Count
-int lastA2 = 0;
-long lastB2 = 0;
-long lastMeas1 = 0;
-long lastMeas2 = 0;
 
 // Global Variables for position
 double x = 0;
 double y = 0;
 double phi = 0;
 long lastPrint = 0;
-long previousCountA = 0, previousCountB = 0;
+long previousCountLeft = 0, previousCountRight = 0;
 
 void encoderUpdateRight() {  // Covered Motor interrupt callback
-  if ((micros() - 300) > lastMeas1) {
-    int thisA1 = digitalRead(3);
-    int thisB1 = digitalRead(6);
+  if ((micros() - 300) > lastMeasRight) {
+    int rightA = digitalRead(3);
+    int rightB = digitalRead(6);
 
-    if ((thisA1 == thisB1)) {
-      rightPos += 2;  // Forward
-    } else {
-      rightPos -= 2;  // Backwards
-    }
-    lastA1 = thisA1;
-    lastB1 = thisB1;
+    if ((rightA == rightB))// Forward
+      rightPos += 2;  
+    else // Backwards
+      rightPos -= 2;
   }
-  lastMeas1 = micros();
+  lastMeasRight = micros();
 }
 
 void encoderUpdateLeft() {  // Uncovered Motor interrupt callback
-  if ((micros() - 300) > lastMeas2) {
-    int thisA2 = digitalRead(2);
-    int thisB2 = digitalRead(5);
+  if ((micros() - 300) > lastMeasLeft) {
+    int leftA = digitalRead(2);
+    int leftB = digitalRead(5);
 
-    if ((thisA2 == thisB2)) {
-      leftPos -= 2;  // Backwards
-    } else {
-      leftPos += 2;  // Forward
-    }
-    lastA2 = thisA2;
-    lastB2 = thisB2;
+    if ((leftA == leftB))  // Backwards
+      leftPos -= 2;
+    else   // Forward
+      leftPos += 2;
   }
-  lastMeas2 = micros();
+  lastMeasLeft = micros();
 }
 
 // Functions
@@ -198,11 +177,11 @@ void loop(){
     analogWrite(10, pwm2);
 
     // Find Count difference
-    long diffLeftCount = long(myEnc2()) - previousCountA;
-    long diffRightCount = long(myEnc1()) - previousCountB;
+    long diffLeftCount = leftPos - previousCountLeft;
+    long diffRightCount = rightPos - previousCountRight;
 
-    previousCountA = myEnc2();
-    previousCountB = myEnc1();
+    previousCountLeft = leftPos;
+    previousCountRight = rightPos;
 
     double diffLeftMeter = ((double)diffLeftCount / COUNTS_PER_REV) * METERS_PER_REV;
     double diffRightMeter = ((double)diffRightCount / COUNTS_PER_REV) * METERS_PER_REV;
