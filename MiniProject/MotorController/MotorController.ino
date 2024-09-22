@@ -5,6 +5,7 @@
 #define REDUCER 4 // 4
 #define PWM_MAX 200 // 200
 
+// General vars
 int numOne = 0;
 int numTwo = 0;
 
@@ -48,7 +49,7 @@ void encoderUpdate1() {  // Covered Motor interrupt callback
     lastA1 = thisA1;
     lastB1 = thisB1;
   }
-  lastMeas1 = micros();
+  lastMeas1 = micros(); // Debounce for encoder
 }
 
 void encoderUpdate2() {  // Uncovered Motor interrupt callback
@@ -64,7 +65,7 @@ void encoderUpdate2() {  // Uncovered Motor interrupt callback
     lastA2 = thisA2;
     lastB2 = thisB2;
   }
-  lastMeas2 = micros();
+  lastMeas2 = micros(); // Debounce for encoder
 }
 
 void setup() {
@@ -94,33 +95,33 @@ void loop() {
   while (loop_delay + lastTime > micros()) {
     if (Serial.available()) {  //wait for data available
       char in = Serial.read();
-      if (first && isDigit(in)) {
+      if (first && isDigit(in)) { // Determine if input byte is number and if it is the first or second byte. 
         numOne = in - 48;
         Serial.println("NUM ONE IS: " + String(numOne) + ". Target1 is: " + String(target1));
         first = false;
-      } else if (isDigit(in)) {
+      } else if (isDigit(in)) { // If not first byte, and is number, then must be second byte
         numTwo = in - 48;
         first = true;
       }
     }
   }
 
-  lastTime = micros();
+  lastTime = micros(); // Log loop start time for delay system
   long loopi1 = i1;  // Position of motor 1
   long loopi2 = i2;  // Position of motor 2
 
-  target1 = numTwo * 1600;
+  target1 = numTwo * 1600; // Set target position
   target2 = numOne * 1600;
 
-  int error1 = target1 - i1;
+  int error1 = target1 - i1; // Calculate error
   int error2 = target2 - i2;
 
-  integral1 += error1 * (loop_delay / 1000);
-  integral1 = constrain(integral1, -I_MAX * (loop_delay / 1000), I_MAX * (loop_delay / 1000));
+  integral1 += error1 * (loop_delay / 1000); // Calculate integral error factor
+  integral1 = constrain(integral1, -I_MAX * (loop_delay / 1000), I_MAX * (loop_delay / 1000)); // Prevent windup
   integral2 += error2 * (loop_delay / 1000);
   integral2 = constrain(integral2, -I_MAX * (loop_delay / 1000), I_MAX * (loop_delay / 1000));
 
-  double voltage1 = min((error1 * KP) + (KI * integral1), BAT_VOLTAGE);
+  double voltage1 = min((error1 * KP) + (KI * integral1), BAT_VOLTAGE); // Limit control voltage to battery voltage
   double voltage2 = min((error2 * KP) + (KI * integral2), BAT_VOLTAGE);
 
   // double voltage1 = min((error1 * KP)/REDUCER, BAT_VOLTAGE);
@@ -129,7 +130,7 @@ void loop() {
   voltage1 = max(-BAT_VOLTAGE, voltage1);
   voltage2 = max(-BAT_VOLTAGE, voltage2);
 
-  if (voltage1 < 0) {  // MOTOR 1 On pololu
+  if (voltage1 < 0) {  // MOTOR 1 On pololu. Direction control
     digitalWrite(7, HIGH);
   } else {
     digitalWrite(7, LOW);
@@ -141,7 +142,7 @@ void loop() {
   }
 
   // Calculate PWM values based
-  double pwm1 = min((abs((double)voltage1 / BAT_VOLTAGE) * 255), PWM_MAX);
+  double pwm1 = min((abs((double)voltage1 / BAT_VOLTAGE) * 255), PWM_MAX); // Calculate PWM based on voltage input
   double pwm2 = min((abs((double)voltage2 / BAT_VOLTAGE) * 255), PWM_MAX); 
 
   // Serial.println(String(target1) + "," + String(error1) + "," + String(voltage1));
