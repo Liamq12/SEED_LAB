@@ -117,9 +117,7 @@ void setup(){
     lastTime = micros();
 }
 
-// Loop
-void loop(){
-    // put your main code here, to run repeatedly:
+void serialInterface(){
     while (loop_delay + lastTime > micros()){
         if (Serial.available()){ // wait for data available
             char in = Serial.read();
@@ -136,14 +134,26 @@ void loop(){
             }
         }
     }
+}
 
-    lastTime = micros();
-    long looprightPos = rightPos; // Position of motor 1
-    long loopleftPos = leftPos; // Position of motor 2
+void calculatePosition(){
+    // Find Count difference
+    long diffLeftCount = leftPos - previousCountLeft;
+    long diffRightCount = rightPos - previousCountRight;
 
-    target1 = numOne * 1600;
-    target2 = numTwo * 1600;
+    // Update previous Count
+    previousCountLeft = leftPos;
+    previousCountRight = rightPos;
 
+    // Calculate movement in meters
+    double diffLeftMeter = ((double)diffLeftCount / COUNTS_PER_REV) * METERS_PER_REV;
+    double diffRightMeter = ((double)diffRightCount / COUNTS_PER_REV) * METERS_PER_REV;
+
+    // Calculate update position
+    position(diffLeftMeter, diffRightMeter);
+}
+
+void motorController(){
     int error1 = target1 - rightPos;
     int error2 = target2 - leftPos;
 
@@ -175,20 +185,17 @@ void loop(){
     // Write to pins
     analogWrite(9, pwm1);
     analogWrite(10, pwm2);
+}
 
-    // Find Count difference
-    long diffLeftCount = leftPos - previousCountLeft;
-    long diffRightCount = rightPos - previousCountRight;
+// Loop
+void loop(){
+    serialInterface();
 
-    previousCountLeft = leftPos;
-    previousCountRight = rightPos;
+    target1 = numOne * 1600;
+    target2 = numTwo * 1600;
 
-    double diffLeftMeter = ((double)diffLeftCount / COUNTS_PER_REV) * METERS_PER_REV;
-    double diffRightMeter = ((double)diffRightCount / COUNTS_PER_REV) * METERS_PER_REV;
-
-    position(diffLeftMeter, diffRightMeter);
-
-    // Record last position
-    prevLooprightPos = looprightPos;
-    prevLoopleftPos = loopleftPos;
+    calculatePosition();
+    motorController();
+    
+    lastTime = micros();
 }
