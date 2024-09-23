@@ -17,7 +17,7 @@ def lcdHandler(lcdConn):
     lcd = character_lcd.Character_LCD_RGB_I2C(i2c, lcd_columns, lcd_rows)
     lcd.clear()
     lcd.color = [5,5,5]
-    lcd.message="Online"
+    lcd.message="On"
     previous = None
     while True:
         #Recieves move commands from main process
