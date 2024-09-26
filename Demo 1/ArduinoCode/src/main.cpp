@@ -1,114 +1,50 @@
 // Lib
 #include <Arduino.h>
-
-// Globals & Constants
-#define BAT_VOLTAGE 7.8
-#define KP 0.05
-#define REDUCER 4
-#define PWM_MAX 200
-
-#define COUNTS_PER_REV 3200
-#define COUNTS_PER_RAD 509
-#define METERS_PER_REV 0.4826
-#define WHEEL_WIDTH 0.2032
+#include <robot.h>
 
 // Timing vars
-const double TARGET_RAD_PER_SEC = 0.5;
-unsigned long desired_Ts_ms = 25;
-unsigned long last_time_ms;
-
 double loop_delay = 1500;
 long lastTime = 0;
 
-// Control system vars
-int numOne = 0;
-int numTwo = 0;
+Robot* Robot::instance = nullptr;
+Position targetPosition(0, 0, 0);
 
-int target1 = 0;
-int target2 = 0;
+void serialInterface(){
+    while (loop_delay + lastTime > micros()){
+        if (Serial.available()){ // wait for data available
+            String inputString = Serial.readStringUntil('\n'); // Read the input until a newline
+            inputString.trim(); // Remove any leading or trailing whitespace
 
-bool first = true;
+            int commaIndex = inputString.indexOf(','); // Find the index of the comma
+            if (commaIndex != -1) { // Check if a comma was found
+                String firstValueStr = inputString.substring(0, commaIndex); // Extract the first value
+                String secondValueStr = inputString.substring(commaIndex + 1); // Extract the second value
+                
+                firstValueStr.trim(); // Trim whitespace
+                secondValueStr.trim(); // Trim whitespace
 
-long lastMeasRight = 0;
-long lastMeasLeft = 0;
+                double firstValue = firstValueStr.toDouble(); // Convert to double
+                double secondValue = secondValueStr.toDouble(); // Convert to double
 
-long rightPos = 0; // Position Count
-long leftPos = 0;
+                // Store new targets
+                targetPosition.x = firstValue;
+                targetPosition.y = secondValue;
 
-long prevLooprightPos = 0;
-long prevLoopleftPos = 0;
-
-// Global Variables for position
-double x = 0;
-double y = 0;
-double phi = 0;
-long lastPrint = 0;
-long previousCountLeft = 0, previousCountRight = 0;
-
-void encoderUpdateRight() {  // Covered Motor interrupt callback
-  if ((micros() - 300) > lastMeasRight) {
-    int rightA = digitalRead(3);
-    int rightB = digitalRead(6);
-
-    if ((rightA == rightB))// Forward
-      rightPos += 2;  
-    else // Backwards
-      rightPos -= 2;
-  }
-  lastMeasRight = micros();
-}
-
-void encoderUpdateLeft() {  // Uncovered Motor interrupt callback
-  if ((micros() - 300) > lastMeasLeft) {
-    int leftA = digitalRead(2);
-    int leftB = digitalRead(5);
-
-    if ((leftA == leftB))  // Backwards
-      leftPos -= 2;
-    else   // Forward
-      leftPos += 2;
-  }
-  lastMeasLeft = micros();
-}
-
-// Functions
-void position(double dl, double dr){
-    x += cos(phi) * ((dl + dr) / 2);
-    y += sin(phi) * ((dl + dr) / 2);
-
-    phi += (1 / WHEEL_WIDTH) * (dl - dr);
-
-    if (lastPrint + 250 < millis()){
-        // Serial.println(String(millis()) + "," + String(x, 4) + "," + String(y, 4) + ", " + String(phi, 4));
-        lastPrint = millis();
+                // Now you can use firstValue and secondValue as needed
+                Serial.print("Target x: ");
+                Serial.println(firstValue);
+                Serial.print("Target y: ");
+                Serial.println(secondValue);
+            } else {
+                Serial.println("Error: No comma found in input.");
+            }
+        }
     }
 }
 
 // Setup
 void setup(){
-    // Pin setup
-
-    // Encoder Setup
-    pinMode(2, INPUT); // Left Encoder A
-    pinMode(3, INPUT); // Right Encoder A
-    pinMode(5, INPUT); // Left Encoder B
-    pinMode(6, INPUT); // Right Encoder B
-
-    // Motor Setup
-    pinMode(4, OUTPUT);        // Enable pin
-    digitalWrite(4, HIGH);     // Set Enable High
-    pinMode(7, OUTPUT);        // Motor 1 Direction
-    pinMode(8, OUTPUT);        // Motor 2 Direction
-    pinMode(9, OUTPUT);        // Motor 1 Speed Output
-    pinMode(10, OUTPUT);       // Motor 2 Speed Output
-    pinMode(12, INPUT_PULLUP); // Fault pin
-    // A0 is Motor Current 1 Sense
-    // A1 is Motor Current 2 Sense
-    
-    // Interrupts
-    attachInterrupt(digitalPinToInterrupt(3), encoderUpdateRight, CHANGE);  // Interrupt for covered motor
-    attachInterrupt(digitalPinToInterrupt(2), encoderUpdateLeft, CHANGE);  // Interrupt for uncovered motor
-    
+    Robot::getInstance();
     // Serial
     Serial.begin(115200);
     Serial.println("Program Start!");
@@ -117,85 +53,14 @@ void setup(){
     lastTime = micros();
 }
 
-void serialInterface(){
-    while (loop_delay + lastTime > micros()){
-        if (Serial.available()){ // wait for data available
-            char in = Serial.read();
-            if (first && isDigit(in))
-            {
-                numOne = in - 48;
-                Serial.println("NUM ONE IS: " + String(numOne) + ". Target1 is: " + String(target1));
-                first = false;
-            }
-            else if (isDigit(in))
-            {
-                numTwo = in - 48;
-                first = true;
-            }
-        }
-    }
-}
-
-void calculatePosition(){
-    // Find Count difference
-    long diffLeftCount = leftPos - previousCountLeft;
-    long diffRightCount = rightPos - previousCountRight;
-
-    // Update previous Count
-    previousCountLeft = leftPos;
-    previousCountRight = rightPos;
-
-    // Calculate movement in meters
-    double diffLeftMeter = ((double)diffLeftCount / COUNTS_PER_REV) * METERS_PER_REV;
-    double diffRightMeter = ((double)diffRightCount / COUNTS_PER_REV) * METERS_PER_REV;
-
-    // Calculate update position
-    position(diffLeftMeter, diffRightMeter);
-}
-
-void motorController(){
-    int error1 = target1 - rightPos;
-    int error2 = target2 - leftPos;
-
-    double voltage1 = min((error1 * KP) / REDUCER, BAT_VOLTAGE);
-    double voltage2 = min((error2 * KP) / REDUCER, BAT_VOLTAGE);
-
-    voltage1 = max(-BAT_VOLTAGE, voltage1);
-    voltage2 = max(-BAT_VOLTAGE, voltage2);
-
-    if (voltage1 < 0){ // MOTOR 1 On pololu
-        digitalWrite(7, HIGH);
-    }
-    else{
-        digitalWrite(7, LOW);
-    }
-    if (voltage2 < 0){
-        digitalWrite(8, LOW);
-    }
-    else{
-        digitalWrite(8, HIGH);
-    }
-
-    // Calculate PWM values based
-    double pwm1 = min((abs((double)voltage1 / BAT_VOLTAGE) * 255), PWM_MAX);
-    double pwm2 = min((abs((double)voltage2 / BAT_VOLTAGE) * 255), PWM_MAX);
-
-    // Serial.println(String(target1) + "," + String(error1) + "," + String(voltage1));
-
-    // Write to pins
-    analogWrite(9, pwm1);
-    analogWrite(10, pwm2);
-}
-
-// Loop
 void loop(){
+    // Serial Interface
     serialInterface();
+    Robot::getInstance()->setTargetPosition(targetPosition);
 
-    target1 = numOne * 1600;
-    target2 = numTwo * 1600;
-
-    calculatePosition();
-    motorController();
+    // Robot Control
+    Robot::getInstance()->calculatePosition();
+    Robot::getInstance()->positionController();
     
     lastTime = micros();
 }
