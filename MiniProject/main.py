@@ -76,7 +76,7 @@ if __name__ == '__main__':
         corners,ids,rejected = aruco.detectMarkers(grey,aruco_dict)
         overlay = cv2.cvtColor(grey,cv2.COLOR_GRAY2RGB)
         overlay = aruco.drawDetectedMarkers(overlay,corners,borderColor=4)
-        
+        print(type(corners))
         #If Marker is detected, perform advanced image processing
         if ids is not None:
             ids = ids.flatten()
