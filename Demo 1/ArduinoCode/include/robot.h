@@ -63,7 +63,7 @@ public:
     Position targetPosition;
     void calculatePosition();
 
-    void setTargetPosition(Position& p_targetPosition){ targetPosition = p_targetPosition; };
+    void setTargetPosition(Position& p_targetPosition);
     Position& getPosition(){ return currentPosition; }
 
     void positionController();

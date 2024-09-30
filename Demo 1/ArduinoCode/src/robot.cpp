@@ -6,6 +6,24 @@ Position::Position(double p_x, double p_y, double p_phi){
     phi = p_phi;
 }
 
+void Robot::setTargetPosition(Position& p_targetPosition){
+    double deltaX = p_targetPosition.x - currentPosition.x;
+    double deltaY = p_targetPosition.y - currentPosition.y;
+
+    // atan2 returns the angle in radians
+    double angleRadians = atan2(deltaY, deltaX);
+
+    // Normalize the angle to be within [0, 360)
+    if (angleRadians < 0) {
+        angleRadians += 2*PI;
+    }
+
+    // Transfer Calculated Values to target position
+    targetPosition.x = p_targetPosition.x;
+    targetPosition.y = p_targetPosition.y;
+    targetPosition.phi = angleRadians;
+}
+
 void Robot::calculatePosition(){
     // Find Count difference
     long diffLeftCount = leftMotor.getPosition() - previousLeftMotorPosition;
@@ -31,11 +49,15 @@ void Robot::positionController(){
     calculatePosition();
     Position errorPosition = targetPosition - currentPosition;
 
+    Serial.print("Xe: " + String(errorPosition.x) + ", Ye: " + String(errorPosition.y) + ", Phie: " + String(errorPosition.phi) + ", : ");
+
     if(abs(errorPosition.phi) < 0.0174533){ // Angle Error is less than +- 1 deg
         // Move towards target / station keep
+        Serial.println("Moving in straight line");
 
     } else {
         // Angle is too far off rotate bot
+        Serial.println("Rotate");
     }
 }
 
@@ -55,20 +77,3 @@ void Robot::positionController(){
 // Loop
 // // Use following code to generate target angle
 // // Function to calculate the angle to the target point
-// double calculateAngle(const Point& current, const Point& target) {
-//     double deltaX = target.x - current.x;
-//     double deltaY = target.y - current.y;
-
-//     // atan2 returns the angle in radians
-//     double angleRadians = atan2(deltaY, deltaX);
-
-//     // Convert to degrees
-//     double angleDegrees = angleRadians * (180.0 / PI); // Use PI defined in Arduino
-
-//     // Normalize the angle to be within [0, 360)
-//     if (angleDegrees < 0) {
-//         angleDegrees += 360.0;
-//     }
-
-//     return angleDegrees;
-// }

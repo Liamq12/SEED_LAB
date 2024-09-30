@@ -46,7 +46,7 @@ void serialInterface(){
 void setup(){
     Robot::getInstance();
     // Serial
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial.println("Program Start!");
     
     // Set Start Time
