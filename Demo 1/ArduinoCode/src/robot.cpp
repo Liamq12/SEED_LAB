@@ -13,7 +13,7 @@ void Robot::calculatePosition(){
 
     // Update previous Count
     previousLeftMotorPosition = leftMotor.getPosition();
-    previousRightMotorPosition = rightMotor.getPosition();
+    previousRightMotorPosition = rightMotor.getPosition(); // Flip direction of right motor
 
     // Calculate movement in meters
     double dl = ((double)diffLeftCount / COUNTS_PER_REV) * METERS_PER_REV;

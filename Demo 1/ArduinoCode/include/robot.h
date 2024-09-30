@@ -8,15 +8,15 @@
 #define REDUCER 4
 #define COUNTS_PER_REV 3200
 #define COUNTS_PER_RAD 509
-#define METERS_PER_REV 0.4826
-#define WHEEL_WIDTH 0.2032
+#define METERS_PER_REV 0.479
+#define WHEEL_WIDTH 0.2775
 
 struct Position { // Units are in mm
     double x = 0;
     double y = 0;
     double phi = 0;
 
-    Position();
+    Position() {}
     Position(double p_x, double p_y, double p_phi);
 
     // Overload the subtraction operator
@@ -37,7 +37,7 @@ private:
     Motor& rightMotor = motorShield.getRightMotor();
 
     // Private constructor to prevent instantiation
-    Robot() {}
+    Robot():currentPosition(0,0,0),targetPosition(0,0,0) {}
 
     // Static pointer to hold the single instance
     static Robot* instance;

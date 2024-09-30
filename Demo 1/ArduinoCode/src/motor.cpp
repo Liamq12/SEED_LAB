@@ -1,11 +1,13 @@
 #include "motor.h"
 
-Motor::Motor(uint8_t l_encoderPinA, uint8_t l_encoderPinB, uint8_t l_directionPin, uint8_t l_speedPin){
+Motor::Motor(uint8_t l_encoderPinA, uint8_t l_encoderPinB, uint8_t l_directionPin, uint8_t l_speedPin, bool flip){
     encoderPinA = l_encoderPinA;
     encoderPinB = l_encoderPinB;
 
     directionPin = l_directionPin;
     speedPin = l_speedPin;
+
+    directionFlip = flip;
 
     // Setup Pins
     pinMode(encoderPinA, INPUT); // Encoder A
@@ -21,10 +23,18 @@ void Motor::encoderUpdate(){
     int stateA = digitalRead(encoderPinA);
     int stateB = digitalRead(encoderPinB);
 
-    if ((stateA == stateB))  // Backwards
-      position -= 2;
-    else   // Forward
-      position += 2;
+    if(!directionFlip){
+        if ((stateA == stateB))  // Backwards
+            position -= 2;
+        else   // Forward
+            position += 2;
+    } else {
+        if ((stateA == stateB))  // Backwards
+            position += 2;
+        else   // Forward
+            position -= 2;
+    }
+    
   }
   lastMeasurement = micros();
 }
@@ -47,7 +57,7 @@ void Motor::setVoltage(double voltage){
 
 // Motor Shield
 Motor MotorShield::leftMotor(2, 5, 7, 9);
-Motor MotorShield::rightMotor(3, 6, 8, 10);
+Motor MotorShield::rightMotor(3, 6, 8, 10, true); // Flip the right motor
 
 MotorShield::MotorShield(){
     // Motor Shield Setup
@@ -55,6 +65,6 @@ MotorShield::MotorShield(){
     digitalWrite(4, HIGH);     // Set Enable High
     pinMode(12, INPUT_PULLUP); // Fault pin
 
-    attachInterrupt(digitalPinToInterrupt(3), leftEncoderUpdate, CHANGE);  // Interrupt for covered motor
-    attachInterrupt(digitalPinToInterrupt(2), rightEncoderUpdate, CHANGE);  // Interrupt for uncovered motor
+    attachInterrupt(digitalPinToInterrupt(2), leftEncoderUpdate, CHANGE);  // Interrupt for covered motor
+    attachInterrupt(digitalPinToInterrupt(3), rightEncoderUpdate, CHANGE);  // Interrupt for uncovered motor
 }

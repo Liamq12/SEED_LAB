@@ -9,7 +9,7 @@
 class Motor {
 public:
     // Constructor
-    Motor(uint8_t encoderPinA, uint8_t encoderPinB, uint8_t directionPin, uint8_t speedPin);
+    Motor(uint8_t encoderPinA, uint8_t encoderPinB, uint8_t directionPin, uint8_t speedPin, bool flip = false);
 
     uint8_t getEncoderPinA(){   return encoderPinA; }
 
@@ -28,7 +28,9 @@ private:
     uint8_t speedPin;
 
     long position = 0;
-    long lastMeasurement = 0;
+    uint32_t lastMeasurement = 0;
+
+    bool directionFlip = false;
 };
 
 class MotorShield {
