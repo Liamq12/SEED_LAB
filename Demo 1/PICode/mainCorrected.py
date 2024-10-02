@@ -171,6 +171,8 @@ if __name__ == '__main__':
         h, w = image.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (h,w), 1, (h,w))
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
+        #x, y, w, h = roi
+        #image = image[y:y+h, x:x+w]
         corners,ids,rejected = detector.detectMarkers(image)
         #If Marker is detected, perform advanced image processing
         if ids is not None and not np.where(ids==0)[0].size ==0 :
