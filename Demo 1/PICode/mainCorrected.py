@@ -144,7 +144,7 @@ if __name__ == '__main__':
     lcd_process = Process(target = lcdHandler, args=(lcdConn,))
     #Starts Processes
     lcd_process.start()
-    json_file_path = '/home/seedlab/calibration1.json'
+    json_file_path = './calibration1.json'
     with open(json_file_path, 'r') as file:
         json_data = json.load(file)
     mtx = np.array(json_data['mtx'])
