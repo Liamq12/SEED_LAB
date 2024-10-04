@@ -17,8 +17,8 @@ def angleFinder():
     #SQUARES_VERTICALLY = 7
     #SQUARES_HORIZONTALLY = 5
     #SQUARE_LENGTH = 0.034290# square side length in pixels
-    MARKER_LENGTH = 0.017145 # marker length in pixels
-    
+    #MARKER_LENGTH = 0.017145 # marker length in meters
+    MARKER_LENGTH = 0.05
     #read json path data
     json_file_path = '/home/seedlab/calibration1.json'
     with open(json_file_path, 'r') as file:
@@ -131,7 +131,8 @@ if __name__ == '__main__':
     #For 4:3
     #CAMERA_HFOV = 57.15431399
     #For 16:9
-    CAMERA_HFOV = 61.37272481
+    #CAMERA_HFOV = 61.37272481
+    CAMERA_HFOV = 55
     ARUCO_DICT = cv2.aruco.DICT_6X6_250
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     params = cv2.aruco.DetectorParameters()
@@ -169,11 +170,12 @@ if __name__ == '__main__':
         ret, image = camera.read()
         image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
         h, w = image.shape[:2]
-        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (h,w), 1, (h,w))
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (w,h), 1, (w,h))
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
         #x, y, w, h = roi
         #image = image[y:y+h, x:x+w]
         corners,ids,rejected = detector.detectMarkers(image)
+        #h,w = image.shape[:2]
         #If Marker is detected, perform advanced image processing
         if ids is not None and not np.where(ids==0)[0].size ==0 :
             ids = ids.flatten()
@@ -183,6 +185,7 @@ if __name__ == '__main__':
             centerY = ((corners[index][0][0][1] + corners[index][0][1][1] + corners[index][0][2][1] + corners[index][0][3][1])*.25)
             cX = mtx[0][2]
             cY = mtx[1][2]
+           
             #angle = np.arctan2((cX-centerX),(cY-centerY)) * 180 / np.pi
             #angle = (CAMERA_HFOV)/2 * (cX-centerX)/cX
             angle =  (CAMERA_HFOV/w) * (cX-centerX)
