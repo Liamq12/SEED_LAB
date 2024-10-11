@@ -129,10 +129,11 @@ def lcdHandler(lcdConn):
 if __name__ == '__main__':
     
     #For 4:3
-    CAMERA_HFOV = 57.15431399
+    #CAMERA_HFOV = 57.15431399
     #For 16:9
     #CAMERA_HFOV = 61.37272481
-    #CAMERA_HFOV = 55
+    #Compensate lost degrees
+    CAMERA_HFOV = 51.5
     ARUCO_DICT = cv2.aruco.DICT_6X6_250
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     params = cv2.aruco.DetectorParameters()
@@ -154,7 +155,12 @@ if __name__ == '__main__':
     # initialize the camera
     camera = cv2.VideoCapture(0)
     #Arcuo setup
-
+    w=640
+    h=480
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (w,h), 1, (w,h))
+    #newW = roi[2]-roi[0]
+    #CAMERA_HFOV = (CAMERA_HFOV/w)*newW
+    
     #aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
     #Let camera warmup
     sleep(1) 
@@ -169,8 +175,8 @@ if __name__ == '__main__':
     while camera.isOpened():
         ret, image = camera.read()
         image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-        h, w = image.shape[:2]
-        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (w,h), 1, (w,h))
+        #h, w = image.shape[:2]
+        
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
         #x, y, w, h = roi
         #image = image[y:y+h, x:x+w]
@@ -181,7 +187,7 @@ if __name__ == '__main__':
             ids = ids.flatten()
             #try:
             index = np.where(ids == 0)[0][0]
-            centerX = round((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
+            centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
             centerY = ((corners[index][0][0][1] + corners[index][0][1][1] + corners[index][0][2][1] + corners[index][0][3][1])*.25)
             cX = mtx[0][2]
             cY = mtx[1][2]
