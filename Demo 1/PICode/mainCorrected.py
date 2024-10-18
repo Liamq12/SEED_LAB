@@ -119,7 +119,7 @@ def lcdHandler(lcdConn):
     i2c = board.I2C()
     lcd = character_lcd.Character_LCD_RGB_I2C(i2c, lcd_columns, lcd_rows)
     lcd.clear()
-    lcd.color = [5,5,5]
+    lcd.color = [3,2,1]
     lcd.message="On"
     while True:
         #Recieves move commands from main process
@@ -195,6 +195,10 @@ if __name__ == '__main__':
             #angle = np.arctan2((cX-centerX),(cY-centerY)) * 180 / np.pi
             #angle = (CAMERA_HFOV)/2 * (cX-centerX)/cX
             angle =  ((CAMERA_HFOV) * (cX-centerX))/w
+            
+            # Fix issue with negative angles being too large, start at like -0.5 angle
+            if angle > 0.5:
+                angle = angle + 0.7
             
             newTime = time.time()
             #if prevAngle == round(angle):
