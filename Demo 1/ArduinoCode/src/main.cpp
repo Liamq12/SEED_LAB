@@ -7,9 +7,8 @@ double loop_delay = 1500;
 long lastTime = 0;
 
 Robot* Robot::instance = nullptr;
-Position targetPosition(0, 0, 0);
 
-void serialInterface(){
+void serialInterface(Robot* robot){
     while (loop_delay + lastTime > micros()){
         if (Serial.available()){ // wait for data available
             String inputString = Serial.readStringUntil('\n'); // Read the input until a newline
@@ -27,8 +26,11 @@ void serialInterface(){
                 double secondValue = secondValueStr.toDouble(); // Convert to double
 
                 // Store new targets
+                Position targetPosition(0, 0, 0);
                 targetPosition.x = firstValue;
                 targetPosition.y = secondValue;
+
+                robot->setTargetPosition(targetPosition);
 
                 // Now you can use firstValue and secondValue as needed
                 Serial.print("Target x: ");
@@ -55,11 +57,9 @@ void setup(){
 
 void loop(){
     // Serial Interface
-    serialInterface();
-    Robot::getInstance()->setTargetPosition(targetPosition);
+    serialInterface(Robot::getInstance());
 
     // Robot Control
-    Robot::getInstance()->calculatePosition();
     Robot::getInstance()->positionController();
     
     lastTime = micros();

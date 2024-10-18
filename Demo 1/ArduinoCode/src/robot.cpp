@@ -6,7 +6,37 @@ Position::Position(double p_x, double p_y, double p_phi){
     phi = p_phi;
 }
 
+// Function to calculate Euclidean distance between two points (x1, y1) and (x2, y2)
+double Robot::getEuclideanDistance(double x1, double y1, double x2, double y2) {
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+}
+
+// Function to calculate the perpendicular distance from point (x3, y3) 
+// to the line defined by points (x1, y1) and (x2, y2)
+double Robot::getNormalDistance(double x1, double y1, double x2, double y2, double x3, double y3) {
+    double A = y2 - y1;
+    double B = x1 - x2;
+    double C = x2 * y1 - x1 * y2;
+
+    return (-1)*(A * x3 + B * y3 + C) / sqrt(A * A + B * B);
+}
+
+void Robot::calcDistanceError(Position& startPosition, Position& currentPosition, Position& targetPosition) {
+    // Calculate the normal error (perpendicular distance to the line from start to target)
+    normalError = getNormalDistance(startPosition.x, startPosition.y,
+                                    targetPosition.x, targetPosition.y,
+                                    currentPosition.x, currentPosition.y);    
+
+    // Calculate the distance error (Euclidean distance to the target)
+    double distance_to_target = getEuclideanDistance(targetPosition.x, targetPosition.y, currentPosition.x, currentPosition.y);
+
+    // Inline distance calculation (distance along the line to the target)
+    inlineError = sqrt(pow(distance_to_target, 2) - pow(normalError, 2));
+}
+
 void Robot::setTargetPosition(Position& p_targetPosition){
+    startPosition = currentPosition; // Start to current position
+
     double deltaX = p_targetPosition.x - currentPosition.x;
     double deltaY = p_targetPosition.y - currentPosition.y;
 
@@ -44,36 +74,103 @@ void Robot::calculatePosition(){
     currentPosition.phi += (1 / WHEEL_WIDTH) * (dl - dr);
 }
 
+void Robot::goToPosition(double inlineError, double normalError){
+    double Kp_inline = 200, Kp_normal = 400;
+    double inlineMax = 60, normalMax = 30;
+
+    double Ki_inline = 0, Ki_normal = 0;
+    double integralThreshold = 0.5;
+
+    // Inline Proportional
+    double inline_PWM = 0;
+    if(inlineMax < fabs(inlineError*Kp_inline)){
+        if(fabs(inlineError*Kp_inline) > 0)
+            inline_PWM = inlineMax;
+        else
+            inline_PWM = -inlineMax;
+    } else {
+        inline_PWM = inlineError*Kp_inline;
+    }
+
+    // Inline Integral
+    if(fabs(inlineError) < integralThreshold){
+       inlineIntegral += inlineError;
+    } else {
+        inlineIntegral = 0;
+    }
+    inline_PWM += inlineIntegral * Ki_inline;
+
+    // Normal Proportional
+    double normal_PWM = 0;
+    if(normalMax < fabs(normalError*Kp_normal)){
+        if(fabs(normalError*Kp_normal) > 0)
+            normal_PWM = normalMax;
+        else
+            normal_PWM = -normalMax;
+    } else {
+        normal_PWM = normalError*Kp_normal;
+    }
+
+    // Normal Integral
+    if(fabs(normalError) < integralThreshold){
+       normalIntegral += normalError;
+    } else {
+        normalIntegral = 0;
+    }
+    normal_PWM += normalIntegral * Ki_normal;
+
+    // Motor Control
+    Serial.print("Inline: " + String(inlineError) + ", Normal: " + String(normalError));
+    Serial.println(", Inline PWM: " + String(inline_PWM) + ", Normal PWM: " + String(normal_PWM));        
+    leftMotor.setVoltage(inline_PWM + normal_PWM);
+    rightMotor.setVoltage(inline_PWM - normal_PWM);    
+}
+
+void Robot::turnTo(double angleError){
+    double Kp_turn = 200, Ki_turn = 1;
+    double turnMax = 40;
+    double integralThreshold = 0.5;
+
+    // P
+    double angle = 0;
+    if(turnMax < fabs(angleError*Kp_turn)){
+        if(fabs(angleError*Kp_turn) > 0)
+            angle = turnMax;
+        else
+            angle = -turnMax;
+    } else {
+        angle = angleError*Kp_turn;
+    }
+
+    // I
+    if(fabs(angleError) < integralThreshold){
+       angleIntegral +=  angleError;
+    } else {
+        angleIntegral = 0;
+    }
+    angle += angleIntegral * Ki_turn;
+
+
+    Serial.print("Angle: " + String(angle));
+    Serial.println(", Angle PWM: " + String(angle));        
+    leftMotor.setVoltage(angle);
+    rightMotor.setVoltage(-angle);
+    // I
+
+    // D
+    
+}
+
 void Robot::positionController(){
     // Calculate current position
     calculatePosition();
     Position errorPosition = targetPosition - currentPosition;
-
-    Serial.print("Xe: " + String(errorPosition.x) + ", Ye: " + String(errorPosition.y) + ", Phie: " + String(errorPosition.phi) + ", : ");
+    calcDistanceError(startPosition, currentPosition, targetPosition);
 
     if(abs(errorPosition.phi) < 0.0174533){ // Angle Error is less than +- 1 deg
-        // Move towards target / station keep
-        Serial.println("Moving in straight line");
+        goToPosition(inlineError, normalError); // Move towards target / station keep
 
     } else {
-        // Angle is too far off rotate bot
-        Serial.println("Rotate");
+        turnTo(errorPosition.phi); // Angle is too far off rotate bot
     }
 }
-
-// // Future integration
-// void motorController(){
-//     int error1 = target1 - rightPos;
-//     int error2 = target2 - leftPos;
-
-//     double voltage1 = min((error1 * KP) / REDUCER, BAT_VOLTAGE);
-//     double voltage2 = min((error2 * KP) / REDUCER, BAT_VOLTAGE);
-
-  
-// }
-
-
-
-// Loop
-// // Use following code to generate target angle
-// // Function to calculate the angle to the target point

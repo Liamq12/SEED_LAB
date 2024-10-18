@@ -45,6 +45,14 @@ private:
     long previousLeftMotorPosition = 0;
     long previousRightMotorPosition = 0;
 
+    double inlineError = 0;
+    double normalError = 0;
+
+    double inlineIntegral = 0;
+    double normalIntegral = 0;
+
+    double angleIntegral = 0;
+
 public:
     // Deleted copy constructor and assignment operator
     Robot(Robot const&) = delete;
@@ -59,6 +67,7 @@ public:
     }
 
     // Position Variables & Functions
+    Position startPosition;
     Position currentPosition;
     Position targetPosition;
     void calculatePosition();
@@ -66,7 +75,14 @@ public:
     void setTargetPosition(Position& p_targetPosition);
     Position& getPosition(){ return currentPosition; }
 
+    double getEuclideanDistance(double x1, double y1, double x2, double y2);
+    double getNormalDistance(double x1, double y1, double x2, double y2, double x3, double y3);
+    void calcDistanceError(Position& startPosition, Position& currentPosition, Position& targetPosition);
+
     void positionController();
+
+    void goToPosition(double inlineError, double normalError);
+    void turnTo(double angleError);
 };
 
 

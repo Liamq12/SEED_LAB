@@ -16,7 +16,7 @@ public:
     void encoderUpdate();
 
     // Sign represents direction
-    void setVoltage(double voltage);
+    void setVoltage(int16_t pwm);
 
     long getPosition(){ return position; }
 

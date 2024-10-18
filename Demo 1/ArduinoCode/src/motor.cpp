@@ -39,16 +39,20 @@ void Motor::encoderUpdate(){
   lastMeasurement = micros();
 }
 
-void Motor::setVoltage(double voltage){
-    voltage = max(-BATT_VOLTAGE, voltage);
+void Motor::setVoltage(int16_t pwm){
+    if(directionFlip){
+        if(pwm > 0)
+            digitalWrite(directionPin, HIGH);
+        else
+            digitalWrite(directionPin, LOW);
+    } else {
+        if(pwm < 0)
+            digitalWrite(directionPin, HIGH);
+        else
+            digitalWrite(directionPin, LOW);
+    }
 
-    if(voltage < 0)
-        digitalWrite(directionPin, HIGH);
-    else
-        digitalWrite(directionPin, LOW);
-
-    // Calculate PWM values based
-    double pwm = min((abs((double)voltage / BATT_VOLTAGE) * 255), PWM_MAX);
+    
 
     // Write to pins
     analogWrite(speedPin, pwm);
