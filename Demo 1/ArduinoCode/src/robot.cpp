@@ -101,12 +101,12 @@ void Robot::calculatePosition(){
 }
 
 void Robot::goToPosition(double inlineError, double normalError){
-    double Kp_inline = 750, Kp_normal = 1500;
+    double Kp_inline = 750, Kp_normal = 1000;
     double inlineMax = 60, normalMax = 20;
 
     double Ki_inline = 15, Ki_normal = 4;
     double integralThresholdInline = 0.01;
-    double integralThresholdNormal = 0.02;
+    double integralThresholdNormal = 0.04;
 
     double Ki_max = 0.5;
 
@@ -207,7 +207,7 @@ void Robot::positionController(){
 
     if(abs(errorPosition.phi) > 0.174533){
         // mode = RobotMode::TURN;
-    } else if (abs(errorPosition.phi) < 0.010){
+    } else if (abs(errorPosition.phi) < 0.020){
         mode = RobotMode::GO_TO;
     }
     
