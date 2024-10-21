@@ -57,7 +57,7 @@ void setup(){
     Serial.println("Program Start!");
 
     // Set target position
-    Robot::getInstance()->mode = RobotMode::GO_TO;
+    Robot::getInstance()->mode = RobotMode::TURN;
     // Store new targets
     Position targetPosition(0, 0, 0);
     // Test 1

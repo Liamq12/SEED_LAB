@@ -41,9 +41,17 @@ void Robot::calcDistanceError(Position& startPosition, Position& currentPosition
     double slope = -(targetPosition.x - startPosition.x) / (targetPosition.y - startPosition.y);
     double lineValue = slope * (currentPosition.x - targetPosition.x) + targetPosition.y;
 
-    if (currentPosition.y > lineValue) { // Inline error should be negative
-        inlineError *= -1;
+    if(targetPosition.y > 0){
+        if (currentPosition.y > lineValue) { // Inline error should be negative
+            inlineError *= -1;
+        }
+    } else if(targetPosition.y < 0){
+        if (currentPosition.y < lineValue) { // Inline error should be negative
+            inlineError *= -1;
+        }
     }
+
+    
 }
 
 void Robot::setTargetPosition(Position& p_targetPosition){
@@ -56,9 +64,9 @@ void Robot::setTargetPosition(Position& p_targetPosition){
     double angleRadians = atan2(deltaY, deltaX);
 
     // Normalize the angle to be within [0, 360)
-    if (angleRadians < 0) {
-        angleRadians += 2*PI;
-    }
+    // if (angleRadians < 0) {
+    //     angleRadians += 2*PI;
+    // }
 
     // Transfer Calculated Values to target position
     targetPosition.x = p_targetPosition.x;
@@ -105,7 +113,7 @@ void Robot::goToPosition(double inlineError, double normalError){
     // Inline Proportional
     double inline_PWM = 0;
     if(inlineMax < fabs(inlineError*Kp_inline)){
-        if(fabs(inlineError*Kp_inline) > 0)
+        if(inlineError*Kp_inline > 0)
             inline_PWM = inlineMax;
         else
             inline_PWM = -inlineMax;
@@ -124,7 +132,7 @@ void Robot::goToPosition(double inlineError, double normalError){
     // Normal Proportional
     double normal_PWM = 0;
     if(normalMax < fabs(normalError*Kp_normal)){
-        if(fabs(normalError*Kp_normal) > 0)
+        if(normalError*Kp_normal > 0)
             normal_PWM = normalMax;
         else
             normal_PWM = -normalMax;
@@ -139,7 +147,7 @@ void Robot::goToPosition(double inlineError, double normalError){
         normalIntegral = 0;
     }
     if(fabs(normalIntegral * Ki_normal) > Ki_max){
-        if(fabs(normalIntegral * Ki_normal) > 0)
+        if(normalIntegral * Ki_normal > 0)
             normal_PWM += Ki_max;
         else
             normal_PWM -= Ki_max;
@@ -163,7 +171,7 @@ void Robot::turnTo(double angleError){
     // P
     double angle = 0;
     if(turnMax < fabs(angleError*Kp_turn)){
-        if(fabs(angleError*Kp_turn) > 0)
+        if(angleError*Kp_turn > 0)
             angle = turnMax;
         else
             angle = -turnMax;
@@ -198,8 +206,8 @@ void Robot::positionController(){
     calcDistanceError(startPosition, currentPosition, targetPosition);
 
     if(abs(errorPosition.phi) > 0.174533){
-        mode = RobotMode::TURN;
-    } else if (abs(errorPosition.phi) < 0.0174533){
+        // mode = RobotMode::TURN;
+    } else if (abs(errorPosition.phi) < 0.010){
         mode = RobotMode::GO_TO;
     }
     
