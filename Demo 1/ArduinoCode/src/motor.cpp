@@ -55,7 +55,7 @@ void Motor::setVoltage(int16_t pwm){
     
 
     // Write to pins
-    analogWrite(speedPin, pwm);
+    analogWrite(speedPin, abs(pwm));
 }
 
 

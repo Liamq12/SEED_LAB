@@ -8,8 +8,13 @@
 #define REDUCER 4
 #define COUNTS_PER_REV 3200
 #define COUNTS_PER_RAD 509
-#define METERS_PER_REV 0.479
-#define WHEEL_WIDTH 0.2775
+#define METERS_PER_REV 0.4738
+#define WHEEL_WIDTH 0.2745
+
+enum RobotMode {
+    TURN,
+    GO_TO
+};
 
 struct Position { // Units are in mm
     double x = 0;
@@ -70,9 +75,14 @@ public:
     Position startPosition;
     Position currentPosition;
     Position targetPosition;
+
+    RobotMode mode = RobotMode::GO_TO;
+
     void calculatePosition();
 
     void setTargetPosition(Position& p_targetPosition);
+    void setTargetAngle(double targetAngle);
+
     Position& getPosition(){ return currentPosition; }
 
     double getEuclideanDistance(double x1, double y1, double x2, double y2);

@@ -14,31 +14,36 @@ void serialInterface(Robot* robot){
             String inputString = Serial.readStringUntil('\n'); // Read the input until a newline
             inputString.trim(); // Remove any leading or trailing whitespace
 
-            int commaIndex = inputString.indexOf(','); // Find the index of the comma
-            if (commaIndex != -1) { // Check if a comma was found
-                String firstValueStr = inputString.substring(0, commaIndex); // Extract the first value
-                String secondValueStr = inputString.substring(commaIndex + 1); // Extract the second value
-                
-                firstValueStr.trim(); // Trim whitespace
-                secondValueStr.trim(); // Trim whitespace
+            if(inputString.indexOf('T') != -1){ // Turn mode
+                robot->mode = RobotMode::TURN;
+                String angle = inputString.substring(1);
+                robot->setTargetAngle(angle.toDouble()); // Set target angle
+                Serial.println("Target angle: " + angle);
+            } else if(inputString.indexOf('P') != -1){ // Go To
+                robot->mode = RobotMode::GO_TO;
 
-                double firstValue = firstValueStr.toDouble(); // Convert to double
-                double secondValue = secondValueStr.toDouble(); // Convert to double
+                int commaIndex = inputString.indexOf(','); // Find the index of the comma
+                if (commaIndex != -1) { // Check if a comma was found
+                    String firstValueStr = inputString.substring(1, commaIndex); // Extract the first value
+                    String secondValueStr = inputString.substring(commaIndex + 1); // Extract the second value
+                    
+                    firstValueStr.trim(); // Trim whitespace
+                    secondValueStr.trim(); // Trim whitespace
 
-                // Store new targets
-                Position targetPosition(0, 0, 0);
-                targetPosition.x = firstValue;
-                targetPosition.y = secondValue;
+                    double firstValue = firstValueStr.toDouble(); // Convert to double
+                    double secondValue = secondValueStr.toDouble(); // Convert to double
 
-                robot->setTargetPosition(targetPosition);
+                    // Store new targets
+                    Position targetPosition(0, 0, 0);
+                    targetPosition.x = firstValue;
+                    targetPosition.y = secondValue;
 
-                // Now you can use firstValue and secondValue as needed
-                Serial.print("Target x: ");
-                Serial.println(firstValue);
-                Serial.print("Target y: ");
-                Serial.println(secondValue);
+                    robot->setTargetPosition(targetPosition);
+
+                    Serial.println("Target x: " + firstValueStr + ", Target y: " + secondValueStr);
+                }
             } else {
-                Serial.println("Error: No comma found in input.");
+                Serial.println("Error: Check Input String");
             }
         }
     }
@@ -48,16 +53,28 @@ void serialInterface(Robot* robot){
 void setup(){
     Robot::getInstance();
     // Serial
-    Serial.begin(115200);
+    Serial.begin(9600);
     Serial.println("Program Start!");
+
+    // Set target position
+    Robot::getInstance()->mode = RobotMode::GO_TO;
+    // Store new targets
+    Position targetPosition(0, 0, 0);
+    targetPosition.x = 0.3048*3;
+    targetPosition.y = 0.3048*3;
+
+    Robot::getInstance()->setTargetPosition(targetPosition);
+    delay(2000);
     
     // Set Start Time
     lastTime = micros();
+
+    
 }
 
 void loop(){
     // Serial Interface
-    serialInterface(Robot::getInstance());
+    // serialInterface(Robot::getInstance());
 
     // Robot Control
     Robot::getInstance()->positionController();

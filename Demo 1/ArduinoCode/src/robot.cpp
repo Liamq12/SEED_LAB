@@ -18,7 +18,12 @@ double Robot::getNormalDistance(double x1, double y1, double x2, double y2, doub
     double B = x1 - x2;
     double C = x2 * y1 - x1 * y2;
 
-    return (-1)*(A * x3 + B * y3 + C) / sqrt(A * A + B * B);
+    double normalDistance = (-1)*(A * x3 + B * y3 + C) / sqrt(A * A + B * B);
+    if (isnan(normalDistance)) {
+        normalDistance = 0.0;  // Set to zero if NaN
+    }
+
+    return normalDistance;
 }
 
 void Robot::calcDistanceError(Position& startPosition, Position& currentPosition, Position& targetPosition) {
@@ -32,6 +37,13 @@ void Robot::calcDistanceError(Position& startPosition, Position& currentPosition
 
     // Inline distance calculation (distance along the line to the target)
     inlineError = sqrt(pow(distance_to_target, 2) - pow(normalError, 2));
+
+    double slope = -(targetPosition.x - startPosition.x) / (targetPosition.y - startPosition.y);
+    double lineValue = slope * (currentPosition.x - targetPosition.x) + targetPosition.y;
+
+    if (currentPosition.y > lineValue) { // Inline error should be negative
+        inlineError *= -1;
+    }
 }
 
 void Robot::setTargetPosition(Position& p_targetPosition){
@@ -52,6 +64,12 @@ void Robot::setTargetPosition(Position& p_targetPosition){
     targetPosition.x = p_targetPosition.x;
     targetPosition.y = p_targetPosition.y;
     targetPosition.phi = angleRadians;
+}
+
+void Robot::setTargetAngle(double targetAngle){
+    startPosition = currentPosition; // Start to current position
+    targetPosition = currentPosition; // Set current position equal to target (Don't want to move)
+    targetPosition.phi = targetAngle;
 }
 
 void Robot::calculatePosition(){
@@ -75,11 +93,14 @@ void Robot::calculatePosition(){
 }
 
 void Robot::goToPosition(double inlineError, double normalError){
-    double Kp_inline = 200, Kp_normal = 400;
-    double inlineMax = 60, normalMax = 30;
+    double Kp_inline = 750, Kp_normal = 1500;
+    double inlineMax = 60, normalMax = 20;
 
-    double Ki_inline = 0, Ki_normal = 0;
-    double integralThreshold = 0.5;
+    double Ki_inline = 15, Ki_normal = 4;
+    double integralThresholdInline = 0.01;
+    double integralThresholdNormal = 0.02;
+
+    double Ki_max = 0.5;
 
     // Inline Proportional
     double inline_PWM = 0;
@@ -93,7 +114,7 @@ void Robot::goToPosition(double inlineError, double normalError){
     }
 
     // Inline Integral
-    if(fabs(inlineError) < integralThreshold){
+    if(fabs(inlineError) < integralThresholdInline){
        inlineIntegral += inlineError;
     } else {
         inlineIntegral = 0;
@@ -112,24 +133,32 @@ void Robot::goToPosition(double inlineError, double normalError){
     }
 
     // Normal Integral
-    if(fabs(normalError) < integralThreshold){
+    if(fabs(normalError) < integralThresholdNormal){
        normalIntegral += normalError;
     } else {
         normalIntegral = 0;
     }
-    normal_PWM += normalIntegral * Ki_normal;
+    if(fabs(normalIntegral * Ki_normal) > Ki_max){
+        if(fabs(normalIntegral * Ki_normal) > 0)
+            normal_PWM += Ki_max;
+        else
+            normal_PWM -= Ki_max;
+    } else {
+        normal_PWM += normalIntegral * Ki_normal;
+    }
+    
 
     // Motor Control
-    Serial.print("Inline: " + String(inlineError) + ", Normal: " + String(normalError));
-    Serial.println(", Inline PWM: " + String(inline_PWM) + ", Normal PWM: " + String(normal_PWM));        
+    Serial.print("Inline: " + String(inlineError,4) + ", Normal: " + String(normalError,4));
+    Serial.println(", Inline PWM: " + String(inline_PWM,4) + ", Normal PWM: " + String(normal_PWM,4) + ", Normal I PWM: " + String(normalIntegral * Ki_normal,4));        
     leftMotor.setVoltage(inline_PWM + normal_PWM);
     rightMotor.setVoltage(inline_PWM - normal_PWM);    
 }
 
 void Robot::turnTo(double angleError){
-    double Kp_turn = 200, Ki_turn = 1;
-    double turnMax = 40;
-    double integralThreshold = 0.5;
+    double Kp_turn = 225, Ki_turn = 1.3;
+    double turnMax = 50;
+    double integralThreshold = 0.25;
 
     // P
     double angle = 0;
@@ -151,10 +180,11 @@ void Robot::turnTo(double angleError){
     angle += angleIntegral * Ki_turn;
 
 
-    Serial.print("Angle: " + String(angle));
-    Serial.println(", Angle PWM: " + String(angle));        
-    leftMotor.setVoltage(angle);
-    rightMotor.setVoltage(-angle);
+    Serial.print("Angle Error: " + String(angleError, 4));
+    Serial.print(", Angle Integral: " + String(angleIntegral * Ki_turn, 4));    
+    Serial.println(", Angle PWM: " + String(angle, 4));      
+    leftMotor.setVoltage(-angle);
+    rightMotor.setVoltage(angle);
     // I
 
     // D
@@ -167,10 +197,15 @@ void Robot::positionController(){
     Position errorPosition = targetPosition - currentPosition;
     calcDistanceError(startPosition, currentPosition, targetPosition);
 
-    if(abs(errorPosition.phi) < 0.0174533){ // Angle Error is less than +- 1 deg
+    if(abs(errorPosition.phi) > 0.174533){
+        mode = RobotMode::TURN;
+    } else if (abs(errorPosition.phi) < 0.0174533){
+        mode = RobotMode::GO_TO;
+    }
+    
+    if(mode == RobotMode::GO_TO){
         goToPosition(inlineError, normalError); // Move towards target / station keep
-
-    } else {
+    } else if(mode == RobotMode::TURN){
         turnTo(errorPosition.phi); // Angle is too far off rotate bot
     }
 }
