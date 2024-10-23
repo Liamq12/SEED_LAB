@@ -60,8 +60,13 @@ void setup(){
     Robot::getInstance()->mode = RobotMode::GO_TO;
     // Store new targets
     Position targetPosition(0, 0, 0);
-    targetPosition.x = 0.3048*3;
-    targetPosition.y = 0.3048*3;
+    // Test 1
+    targetPosition.x = 0.3048*2;
+    targetPosition.y = 0.3048*-2;
+
+    // Test 1
+    // targetPosition.x = 0.3048*-2;
+    // targetPosition.y = 0.3048*2;
 
     Robot::getInstance()->setTargetPosition(targetPosition);
     delay(2000);
