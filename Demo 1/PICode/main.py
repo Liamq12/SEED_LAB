@@ -17,8 +17,8 @@ def angleFinder():
     #SQUARES_VERTICALLY = 7
     #SQUARES_HORIZONTALLY = 5
     #SQUARE_LENGTH = 0.034290# square side length in pixels
-    MARKER_LENGTH = 0.017145 # marker length in pixels
-    
+    #MARKER_LENGTH = 0.017145 # marker length in meters
+    #MARKER_LENGTH = 0.05
     #read json path data
     json_file_path = '/home/seedlab/calibration1.json'
     with open(json_file_path, 'r') as file:
@@ -35,8 +35,8 @@ def angleFinder():
     h, w = image.shape[:2]
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (h,w), 1, (h,w))
     image = cv2.undistort(image, mtx, dst, None, newcameramtx)
-    all_charuco_ids = []
-    all_charuco_corners = []
+    #all_charuco_ids = []
+    #all_charuco_corners = []
     
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     #board = cv2.aruco.CharucoBoard((SQUARES_VERTICALLY, SQUARES_HORIZONTALLY), SQUARE_LENGTH, MARKER_LENGTH, dictionary)
@@ -119,7 +119,7 @@ def lcdHandler(lcdConn):
     i2c = board.I2C()
     lcd = character_lcd.Character_LCD_RGB_I2C(i2c, lcd_columns, lcd_rows)
     lcd.clear()
-    lcd.color = [5,5,5]
+    lcd.color = [3,2,1]
     lcd.message="On"
     while True:
         #Recieves move commands from main process
@@ -128,18 +128,24 @@ def lcdHandler(lcdConn):
         
 if __name__ == '__main__':
     
+    #For 4:3
+    #CAMERA_HFOV = 57.15431399
+    #For 16:9
+    #CAMERA_HFOV = 61.37272481
+    #Compensate lost degrees
+    CAMERA_HFOV = 51.5
     ARUCO_DICT = cv2.aruco.DICT_6X6_250
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     params = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(dictionary, params)
-    MARKER_LENGTH = 0.017145 # marker length in pixels
+    #MARKER_LENGTH = 0.017145 # marker length in pixels
     # Sets up pipes for interprocess communication
     lcdConn,mainLCDConn = Pipe()
     #Defines LCD iC2 Process
     lcd_process = Process(target = lcdHandler, args=(lcdConn,))
     #Starts Processes
     lcd_process.start()
-    json_file_path = '/home/seedlab/calibration1.json'
+    json_file_path = './calibration1.json'
     with open(json_file_path, 'r') as file:
         json_data = json.load(file)
     mtx = np.array(json_data['mtx'])
@@ -149,56 +155,75 @@ if __name__ == '__main__':
     # initialize the camera
     camera = cv2.VideoCapture(0)
     #Arcuo setup
-
+    w=640
+    h=480
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (w,h), 1, (w,h))
+    #newW = roi[2]-roi[0]
+    #CAMERA_HFOV = (CAMERA_HFOV/w)*newW
+    
     #aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
     #Let camera warmup
-    sleep(1)
+    sleep(1) 
     prevAngle = 370
     
     prevTime = time.time()
+    
+    
+    
     #Main control loop
     #Takes image frame from video capture and processes it
     while camera.isOpened():
         ret, image = camera.read()
         image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-        h, w = image.shape[:2]
-        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (h,w), 1, (h,w))
+        #h, w = image.shape[:2]
+        
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
+        #x, y, w, h = roi
+        #image = image[y:y+h, x:x+w]
         corners,ids,rejected = detector.detectMarkers(image)
+        #h,w = image.shape[:2]
         #If Marker is detected, perform advanced image processing
         if ids is not None and not np.where(ids==0)[0].size ==0 :
             ids = ids.flatten()
-            try:
-                index = np.where(ids == 0)[0][0]
-                centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
-                centerY = ((corners[index][0][0][1] + corners[index][0][1][1] + corners[index][0][2][1] + corners[index][0][3][1])*.25)
-                cX = mtx[0][2]
-                cY = mtx[1][2]
-                angle = np.arctan2((cX-centerX),(cY-centerY)) * 180 / np.pi
-                newTime = time.time()
-                if prevAngle == round(angle):
-                    if newTime - prevTime > 1:
-                        prevTime = newTime
-                        mainLCDConn.send(f"{angle:.2f}")
-                prevAngle = round(angle)
-                centXR = round(centerX)
-                centYR = round(centerY)
-                camXR = round(cX)
-                camYR = round(cY)
-                image = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
-                image = cv2.line(image,pt1=(centXR,centYR), pt2=(centXR,centYR), color = (0,0,255), thickness=10)
-                image = cv2.line(image,pt1=(camXR,camYR), pt2=(camXR,camYR), color = (0,255,0), thickness=10)
-                
-                #mainLCDConn.send("ab")
-                
-                #Labels marker with numeric id
-                #for(outline, id) in zip(corners, ids):
-                #    markerCorners = outline.reshape((4,2))
-                #    overlay = cv2.putText(overlay,str(id),(int(markerCorners[0,0]),int(markerCorners[0,1]) -15),cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0),2)
-            except:
-                print("bruh")
-                cv2.imshow("undistort", image)
-                continue
+            #try:
+            index = np.where(ids == 0)[0][0]
+            centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
+            centerY = ((corners[index][0][0][1] + corners[index][0][1][1] + corners[index][0][2][1] + corners[index][0][3][1])*.25)
+            cX = mtx[0][2]
+            cY = mtx[1][2]
+            
+            #angle = np.arctan2((cX-centerX),(cY-centerY)) * 180 / np.pi
+            #angle = (CAMERA_HFOV)/2 * (cX-centerX)/cX
+            angle =  ((CAMERA_HFOV) * (cX-centerX))/w
+            
+            # Fix issue with negative angles being too large, start at like -0.5 angle
+            if angle > 0.5:
+                angle = angle + 0.7
+            
+            newTime = time.time()
+            #if prevAngle == round(angle):
+            if newTime - prevTime > 1:
+                prevTime = newTime
+                mainLCDConn.send(f"{angle:.2f}")
+            prevAngle = round(angle)
+            centXR = round(centerX)
+            centYR = round(centerY)
+            camXR = round(cX)
+            camYR = round(cY)
+            image = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+            image = cv2.line(image,pt1=(centXR,centYR), pt2=(centXR,centYR), color = (0,0,255), thickness=10)
+            image = cv2.line(image,pt1=(camXR,camYR), pt2=(camXR,camYR), color = (0,255,0), thickness=10)
+            
+            #mainLCDConn.send("ab")
+            
+            #Labels marker with numeric id
+            #for(outline, id) in zip(corners, ids):
+            #    markerCorners = outline.reshape((4,2))
+            #    overlay = cv2.putText(overlay,str(id),(int(markerCorners[0,0]),int(markerCorners[0,1]) -15),cv2.FONT_HERSHEY_SIMPLEX,0.5,(255,0,0),2)
+            #except:
+            #    print()
+            #    cv2.imshow("undistort", image)
+             #   continue
         
         
         #cv2.imshow("overlay",overlay)
