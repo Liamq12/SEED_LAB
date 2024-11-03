@@ -9,8 +9,30 @@ from smbus2 import SMBus
 from multiprocessing import Process, Pipe
 import json
         
-if __name__ == '__main__':
+#Data packet Format
+# Angle,       
+def serialHandler(serialConn):
+    #Initializes Serial Connection
+    ser = serial.Serial('/dev/ttyACM0', 115200, timeout =1)
+    prePosition = None
     
+    while True:
+        #Recieves move commands from main process
+        messageObj = serialConn.recv()
+        leftWheel = messageObj[0]
+        rightWheel = messageObj[1]
+        toSend = f"[{leftWheel},{rightWheel}]"
+        if prePosition != messageObj:
+            ser.write(toSend.encode(encoding='ascii'))
+            prePosition = messageObj
+        
+        
+if __name__ == '__main__':
+   
+
+    serialConn,mainSerialConn = Pipe()
+    serial_process = Process(target = serialHandler, args=(serialConn,))
+    serial_process.start()
     #For 4:3
     #CAMERA_HFOV = 57.15431399
     #For 16:9
@@ -62,7 +84,9 @@ if __name__ == '__main__':
         
         
         ############################################################################
-        
+        angle = None
+        feet_dist = None
+        turnTo = 2
         ret, image1 = camera.read()
         image = cv2.cvtColor(image1,cv2.COLOR_BGR2GRAY)
         #h, w = image.shape[:2]
@@ -147,9 +171,11 @@ if __name__ == '__main__':
                 print(whichOne)
                 if (resultMtxArray[whichOne] > 100000):
                     if(whichOne):
-                        print("There is a green arrow showing")
+                        turnTo = 0
+                        #print("There is a green arrow showing")
                     else:
-                        print("There is a red arrow showing")
+                        turnTo = 1
+                        #print("There is a red arrow showing")
                         
             angle =  ((CAMERA_HFOV) * (cX-centerX))/w
             
@@ -159,16 +185,17 @@ if __name__ == '__main__':
             
             
             #if prevAngle == round(angle):
-        if smallImage is not None:
-            cv2.imshow("wow",smallImage)
+        #if smallImage is not None:
+        #    cv2.imshow("wow",smallImage)
         
         
+        mainSerialConn.send([angle,feet_dist,turnTo])
         #cv2.imshow("overlay",overlay)
         #cv2.imshow("undistort", image)
         #Exits loop after pressign 'q'
         if cv2.waitKey(10) == ord('q'):
             break
-    
+        
     #Releases camera and kills all windows
     camera.release()
     cv2.destroyAllWindows()
