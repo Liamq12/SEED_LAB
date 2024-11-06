@@ -16,9 +16,11 @@ public:
     void encoderUpdate();
 
     // Sign represents direction
-    void setVoltage(int16_t pwm);
+    void setPWM(int16_t pwm);
 
     long getPosition(){ return position; }
+
+    void clearPosition();
 
 private:
     uint8_t encoderPinA;

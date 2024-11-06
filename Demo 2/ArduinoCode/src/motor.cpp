@@ -39,7 +39,7 @@ void Motor::encoderUpdate(){
   lastMeasurement = micros();
 }
 
-void Motor::setVoltage(int16_t pwm){
+void Motor::setPWM(int16_t pwm){
     if(directionFlip){
         if(pwm > 0)
             digitalWrite(directionPin, HIGH);
@@ -58,6 +58,9 @@ void Motor::setVoltage(int16_t pwm){
     analogWrite(speedPin, abs(pwm));
 }
 
+void Motor::clearPosition(){
+    position = 0;
+}
 
 // Motor Shield
 Motor MotorShield::leftMotor(2, 5, 7, 9);
