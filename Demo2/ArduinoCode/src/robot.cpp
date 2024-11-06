@@ -24,7 +24,7 @@ void Robot::goForward(){
         rightCompensation = (abs(drift) < KDriftReducer) ? 0 : abs(drift);
     }
 
-    Serial.println(String(leftCompensation) + "," + String(rightCompensation) + "," + String(drift));
+    // Serial.println(String(leftCompensation) + "," + String(rightCompensation) + "," + String(drift));
 
     integralError += distanceError * (LOOP_DELAY / 1000.); 
     integralError = constrain(integralError, -I_MAX * (LOOP_DELAY / 1000), I_MAX * (LOOP_DELAY / 1000));
@@ -56,7 +56,7 @@ void Robot::turnTo(){
         rightCompensation = (abs(drift) < KDriftReducer) ? 0 : abs(drift);
     }
 
-    Serial.println(String(leftCompensation) + "," + String(rightCompensation) + "," + String(drift));
+    // Serial.println(String(leftCompensation) + "," + String(rightCompensation) + "," + String(drift));
 
     integralError += distanceError * (LOOP_DELAY / 1000.); 
     integralError = constrain(integralError, -I_MAX * (LOOP_DELAY / 1000), I_MAX * (LOOP_DELAY / 1000));
@@ -92,5 +92,19 @@ void Robot::positionController(){
         goForward(); // Move towards target / station keep
     } else if(mode == RobotMode::TURN){
         turnTo(); // Angle is too far off rotate bot
-    }
+    } else if(mode == RobotMode::LEFT90){
+        leftMotor.setPWM(50);
+        rightMotor.setPWM(-50);
+        delay(1000);
+        leftMotor.setPWM(0);
+        rightMotor.setPWM(0);
+        while(true){delay(100);}
+    } else if(mode == RobotMode::RIGHT90){
+        leftMotor.setPWM(-50);
+        rightMotor.setPWM(50);
+        delay(1000);
+        leftMotor.setPWM(0);
+        rightMotor.setPWM(0);
+        while(true){delay(100);}
+    } 
 }

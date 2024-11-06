@@ -11,11 +11,13 @@
 #define METERS_PER_REV 0.4738
 #define WHEEL_WIDTH 0.2745
 
-#define LOOP_DELAY 1500
+#define LOOP_DELAY 25000
 
 enum RobotMode {
     TURN,
-    FORWARD
+    FORWARD,
+    LEFT90,
+    RIGHT90
 };
 
 class Robot {
