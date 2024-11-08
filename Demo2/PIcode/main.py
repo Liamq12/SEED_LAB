@@ -17,10 +17,10 @@ import json
 def serialHandler(serialConn):
     #Initializes Serial Connection
     ser = serial.Serial('/dev/ttyACM0', 115200)
-    ser.write(b'PS')
     prePosition = None
-    sleep(.5)
     delay= time.time()
+    while(not ser.in_waiting):
+        pass
     while True:
         #Recieves move commands from main process
         delay2 = time.time()
@@ -29,7 +29,6 @@ def serialHandler(serialConn):
         if(serialConn.poll()):
             messageObj = serialConn.recv()
             if(messageObj != f"0"):
-                
                 if(messageObj == f"1"):
                     serialConn.close()
                     break
@@ -38,6 +37,13 @@ def serialHandler(serialConn):
                     #turnTo = messageObj[2]
                     
                     #toSend = f"{distanceError},{angleError}"
+                if(messageObj == f"R\n" or messageObj == f"L\n" or messageObj ==f"O\n"):
+                    print(messageObj)
+                    amountSleep= .05-(delay2-delay)
+                    if (amountSleep > 0):
+                        sleep(amountSleep)
+                    ser.write(messageObj.encode(encoding='ascii'))
+                    prePosition = messageObj
                 if(delay2-delay > .05): 
                     #print(messageObj)
                     delay=delay2 
@@ -84,6 +90,8 @@ if __name__ == '__main__':
     #CAMERA_HFOV = (CAMERA_HFOV/w)*newW
     #aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
     #Let camera warmup
+    messageToSend=f"O\n"
+    mainSerialConn.send(messageToSend)
     sleep(1) 
     prevAngle = 370
     prevTime = time.time()
@@ -139,7 +147,7 @@ if __name__ == '__main__':
             feet_dist = 0.3048* (110 / width)
             #print(feet_dist)
             ############################################################################
-            if (feet_dist<(.47)):
+            if (feet_dist<(.35)):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
