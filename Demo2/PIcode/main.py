@@ -147,7 +147,7 @@ if __name__ == '__main__':
             feet_dist = 0.3048* (110 / width)
             #print(feet_dist)
             ############################################################################
-            if (feet_dist<(.35)):
+            if (feet_dist<(.4)):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
