@@ -17,27 +17,33 @@ import json
 def serialHandler(serialConn):
     #Initializes Serial Connection
     ser = serial.Serial('/dev/ttyACM0', 115200)
+    ser.write(b'PS')
     prePosition = None
+    sleep(.5)
     delay= time.time()
     while True:
         #Recieves move commands from main process
         delay2 = time.time()
-        messageObj = serialConn.recv()
         if(ser.in_waiting):
                 print(ser.readline())
-        elif(messageObj != f"0"):
-            
-                #distanceError = messageObj[0]
-                #angleError = messageObj[1]
-                #turnTo = messageObj[2]
+        if(serialConn.poll()):
+            messageObj = serialConn.recv()
+            if(messageObj != f"0"):
                 
-                #toSend = f"{distanceError},{angleError}"
-            if(delay2-delay > .05): 
-                print(messageObj)
-                delay=delay2 
-                if prePosition != messageObj:
-                     ser.write(messageObj.encode(encoding='ascii'))
-                     prePosition = messageObj
+                if(messageObj == f"1"):
+                    serialConn.close()
+                    break
+                    #distanceError = messageObj[0]
+                    #angleError = messageObj[1]
+                    #turnTo = messageObj[2]
+                    
+                    #toSend = f"{distanceError},{angleError}"
+                if(delay2-delay > .05): 
+                    #print(messageObj)
+                    delay=delay2 
+                    if prePosition != messageObj:
+                         ser.write(messageObj.encode(encoding='ascii'))
+                         prePosition = messageObj
     
 if __name__ == '__main__':
    
@@ -90,9 +96,9 @@ if __name__ == '__main__':
     lowerRed = np.array([0,160,160])
     upperRed2 = np.array([179, 255, 255])
     lowerRed2 = np.array([170, 160, 160])
-    while camera.isOpened():
+    while camera.isOpened() and turnTo==2:
 #########################################################################################
-        sleep (.05)
+        #sleep (.05)
         #Determine if the arrow is pointing left(green) or right(red)
         messageToSend = None    
         ############################################################################
@@ -133,7 +139,7 @@ if __name__ == '__main__':
             feet_dist = 0.3048* (110 / width)
             #print(feet_dist)
             ############################################################################
-            if (feet_dist<(1.0*0.3048)):
+            if (feet_dist<(.47)):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
@@ -170,9 +176,8 @@ if __name__ == '__main__':
                 #contours_green,_ = cv2.findContours(maskGreen, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                 #cv2.drawContours(resultGreen,contours_green,-1,(255,0,0),-1)
                 
-                
                 whichOne = ( resultMtxArray[0] < resultMtxArray[1])
-                if (resultMtxArray[whichOne] > 100000):
+                if (resultMtxArray[whichOne] > 50000):
                     if(whichOne):
                         turnTo = 0 # set to max FOV until we see camera
                         messageToSend = f"L\n"
@@ -194,6 +199,7 @@ if __name__ == '__main__':
                 mainSerialConn.send(messageToSend)
             else:
                 mainSerialConn.send(messageToSend)
+                sleep(.5)
                 break
             #if prevAngle == round(angle):
         #if smallImage is not None:
@@ -209,8 +215,12 @@ if __name__ == '__main__':
             break
         
     #Releases camera and kills all windows
+    mainSerialConn.send(f"1")
+    mainSerialConn.close()
     camera.release()
     cv2.destroyAllWindows()
+    
+    
     
     
     #Closes pipes and joins sub-processes back to main process
