@@ -32,11 +32,6 @@ def serialHandler(serialConn):
                 if(messageObj == f"1"):
                     serialConn.close()
                     break
-                    #distanceError = messageObj[0]
-                    #angleError = messageObj[1]
-                    #turnTo = messageObj[2]
-                    
-                    #toSend = f"{distanceError},{angleError}"
                 if(messageObj == f"R\n" or messageObj == f"L\n" or messageObj ==f"SR\n"):
                     print(messageObj)
                     amountSleep= .05-(delay2-delay)
@@ -57,28 +52,17 @@ if __name__ == '__main__':
     serialConn,mainSerialConn = Pipe()
     serial_process = Process(target = serialHandler, args=(serialConn,))
     serial_process.start()
-    #For 4:3
-    #CAMERA_HFOV = 57.15431399
-    #For 16:9
-    #CAMERA_HFOV = 61.37272481
-    #Compensate lost degrees
     fudgeFactor = 0.0
     CAMERA_HFOV = 51.5
     ARUCO_DICT = cv2.aruco.DICT_6X6_250
     dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     params = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(dictionary, params)
-    #MARKER_LENGTH = 0.017145 # marker length in pixels
-    # Sets up pipes for interprocess communication
-    #lcdConn,mainLCDConn = Pipe()
-    #Defines LCD iC2 Process
-    #lcd_process = Process(target = lcdHandler, args=(lcdConn,))
-    #Starts Processes
-    #lcd_process.start()
     json_file_path = './calibration1.json'
     with open(json_file_path, 'r') as file:
         json_data = json.load(file)
     mtx = np.array(json_data['mtx'])
+    cX = mtx[0][2]
     dst = np.array(json_data['dist'])
     # initialize the camera
     camera = cv2.VideoCapture(-1)
@@ -86,17 +70,12 @@ if __name__ == '__main__':
     w=640
     h=480
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dst, (w,h), 1, (w,h))
-    #newW = roi[2]-roi[0]
-    #CAMERA_HFOV = (CAMERA_HFOV/w)*newW
-    #aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
     #Let camera warmup
     messageToSend=f"SR\n"
     mainSerialConn.send(messageToSend)
     sleep(1) 
     prevAngle = 370
     prevTime = time.time()
-    #Main control loop
-    #Takes image frame from video capture and processes it
     turnTo=2
     upperGreen = np.array([80, 180, 180])
     lowerGreen = np.array([45,80,80])
@@ -105,32 +84,35 @@ if __name__ == '__main__':
     upperRed2 = np.array([179, 255, 255])
     lowerRed2 = np.array([170, 160, 160])
     while camera.isOpened() and turnTo==2:
-#########################################################################################
-        #sleep (.05)
-        #Determine if the arrow is pointing left(green) or right(red)
         messageToSend = None    
-        ############################################################################
         angle = None
-        feet_dist = None
+        meter_dist = None
         ret, image1 = camera.read()
         image = cv2.cvtColor(image1,cv2.COLOR_BGR2GRAY)
-        #h, w = image.shape[:2]
         
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
         smallImage = None
-        #x, y, w, h = roi
-        #image = image[y:y+h, x:x+w]
         corners,ids,rejected = detector.detectMarkers(image)
-        #h,w = image.shape[:2]
-        #If Marker is detected, perform advanced image processing
         if ids is not None and not np.where(ids==0)[0].size ==0:
             ids = ids.flatten()
             #try:
-            index = np.where(ids == 0)[0][0]
-            centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
+            indexL = np.where(ids == 0)[0]
+            #index = np.where(ids == 0)[0][0] 
+            #The chosen marker
             #centerY = ((corners[index][0][0][1] + corners[index][0][1][1] + corners[index][0][2][1] + corners[index][0][3][1])*.25)
-            cX = mtx[0][2]
             #cY = mtx[1][2]
+            meter_dist=-1
+            width = -1
+            index = -1
+            for indI, valI in enumerate(indexL):
+                temp = corners[valI][0][1][0]-corners[valI][0][0][0]
+                if(temp > width):
+                    width = temp
+                    index = valI
+                    tempD=0.3048* (110 / width)
+                    meter_dist = tempD
+                    if(tempD>1.53):
+                        break
             
             #Determine distance
             ############################################################################
@@ -142,12 +124,10 @@ if __name__ == '__main__':
             #4-0 tiles is 27-28        - 3/4
             #5-0 tiles is 21 22 5-1 is 22, 5-2 is 21 - 4/5
             #distance in feet:
-            width = corners[index][0][1][0]-corners[index][0][0][0]
              #print(width)
-            feet_dist = 0.3048* (110 / width)
-            #print(feet_dist)
+            #print(meter_dist)
             ############################################################################
-            if (feet_dist<(.45)):
+            if (meter_dist<(.45)):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
@@ -194,26 +174,29 @@ if __name__ == '__main__':
                         turnTo = 1
                         messageToSend = f"R\n"
                         #print("There is a red arrow showing")
-                        
+                else:
+                    turnTo = 3
+                    messageToSend = f"S\n"
+            centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
             angle =  ((CAMERA_HFOV) * (cX-centerX))/w
             
             # Fix issue with negative angles being too large, start at like -0.5 angle
             if (angle > 0.5):
                 angle = angle + 0.7
-            #if(feet_dist>fudgeFactor):
+            #if(meter_dist>fudgeFactor):
             #    fudgeFactor = 0
             if(turnTo==2):
-                messageToSend=f"{round(feet_dist,3)},{round(angle,3)}\n"
+                messageToSend=f"{round(meter_dist,3)},{round(angle,3)}\n"
                 mainSerialConn.send(messageToSend)
             else:
                 mainSerialConn.send(messageToSend)
                 sleep(.5)
-                break
+                turnTo=2
             #if prevAngle == round(angle):
         #if smallImage is not None:
         #    cv2.imshow("wow",smallImage)
         
-        #mainSerialConn.send([angle,feet_dist,turnTo])
+        #mainSerialConn.send([angle,meter_dist,turnTo])
         #cv2.imshow("overlay",overlay)
         #cv2.imshow("undistort", image)
         #Exits loop after pressign 'q'
