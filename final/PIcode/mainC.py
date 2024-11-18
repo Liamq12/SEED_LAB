@@ -32,7 +32,7 @@ def serialHandler(serialConn):
                 if(messageObj == f"1"):
                     serialConn.close()
                     break
-                if(messageObj == f"R\n" or messageObj == f"L\n" or messageObj ==f"SR\n"):
+                if(messageObj == f"R\n" or messageObj == f"L\n" or messageObj ==f"SR\n" or messageObj==f"S\n"):
                     print(messageObj)
                     amountSleep= .05-(delay2-delay)
                     if (amountSleep > 0):
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                 mainSerialConn.send(messageToSend)
             else:
                 mainSerialConn.send(messageToSend)
-                sleep(.5)
+                sleep(.2)
                 turnTo=2
             #if prevAngle == round(angle):
         #if smallImage is not None:
