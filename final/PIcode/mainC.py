@@ -83,13 +83,14 @@ if __name__ == '__main__':
     lowerRed = np.array([0,160,160])
     upperRed2 = np.array([179, 255, 255])
     lowerRed2 = np.array([170, 160, 160])
+    seeTurn = True
     while camera.isOpened() and turnTo==2:
         messageToSend = None    
         angle = None
         meter_dist = None
         ret, image1 = camera.read()
         image = cv2.cvtColor(image1,cv2.COLOR_BGR2GRAY)
-        
+
         image = cv2.undistort(image, mtx, dst, None, newcameramtx)
         smallImage = None
         corners,ids,rejected = detector.detectMarkers(image)
@@ -111,9 +112,12 @@ if __name__ == '__main__':
                     index = valI
                     tempD=0.3048* (110 / width)
                     meter_dist = tempD
-                    if(tempD>1.53):
+                    if(tempD<1.53):
+                        if(not seeTurn and tempD>.45):
+                            seeTurn = True
                         break
-            
+                    
+
             #Determine distance
             ############################################################################
             #print(corners[index][0][1][0]-corners[index][0][0][0])           
@@ -127,7 +131,7 @@ if __name__ == '__main__':
              #print(width)
             #print(meter_dist)
             ############################################################################
-            if (meter_dist<(.45)):
+            if (meter_dist<(.45) and seeTurn):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
@@ -166,6 +170,7 @@ if __name__ == '__main__':
                 
                 whichOne = ( resultMtxArray[0] < resultMtxArray[1])
                 if (resultMtxArray[whichOne] > 50000):
+                    seeTurn = False
                     if(whichOne):
                         turnTo = 0 # set to max FOV until we see camera
                         messageToSend = f"L\n"
