@@ -19,6 +19,7 @@ def serialHandler(serialConn):
     ser = serial.Serial('/dev/ttyACM0', 115200)
     prePosition = None
     delay= time.time()
+    delayTurn = delay-1
     while(not ser.in_waiting):
         pass
     while True:
@@ -28,20 +29,33 @@ def serialHandler(serialConn):
                 print(ser.readline())
         if(serialConn.poll()):
             messageObj = serialConn.recv()
-            if(messageObj != f"0"):
+            if(messageObj != f"0" and delay2-delayTurn>.8 ):
                 if(messageObj == f"1"):
                     serialConn.close()
                     break
-                if(messageObj == f"R\n" or messageObj == f"L\n" or messageObj ==f"SR\n" or messageObj==f"S\n"):
-                    print(messageObj)
+                elif(messageObj ==f"SR\n" or messageObj==f"S\n"):
                     amountSleep= .05-(delay2-delay)
                     if (amountSleep > 0):
                         sleep(amountSleep)
                     ser.write(messageObj.encode(encoding='ascii'))
+                    print(messageObj)
                     prePosition = messageObj
-                if(delay2-delay > .05): 
+                    delay=time.time()
+                elif(messageObj==f"R\n" or messageObj==f"L\n" ):
+                    amountSleep= .05-(delay2-delay)
+                    if (amountSleep > 0):
+                        sleep(amountSleep)
+                    tmpdelay=time.time()
+                    delayTurn=tmpdelay
+                    delay=tmpdelay
+                    if(prePosition!=messageObj):
+                        print(messageObj)
+                        ser.write(messageObj.encode(encoding='ascii'))
+                    prePosition = messageObj
+                
+                elif(delay2-delay > .05): 
                     #print(messageObj)
-                    delay=delay2 
+                    delay=delay2
                     if prePosition != messageObj:
                          ser.write(messageObj.encode(encoding='ascii'))
                          prePosition = messageObj
@@ -84,7 +98,7 @@ if __name__ == '__main__':
     upperRed2 = np.array([179, 255, 255])
     lowerRed2 = np.array([170, 160, 160])
     seeTurn = True
-    while camera.isOpened() and turnTo==2:
+    while camera.isOpened():
         messageToSend = None    
         angle = None
         meter_dist = None
@@ -131,7 +145,7 @@ if __name__ == '__main__':
              #print(width)
             #print(meter_dist)
             ############################################################################
-            if (meter_dist<(.45) and seeTurn):
+            if (meter_dist<(.54) and seeTurn):
                 height = corners[index][0][2][1] - corners[index][0][1][1]
                 #For width of mask:
                 #Lower bound
@@ -179,7 +193,7 @@ if __name__ == '__main__':
                         turnTo = 1
                         messageToSend = f"R\n"
                         #print("There is a red arrow showing")
-                else:
+                elif(meter_dist<.41):
                     turnTo = 3
                     messageToSend = f"S\n"
             centerX = ((corners[index][0][0][0] + corners[index][0][1][0] + corners[index][0][2][0] + corners[index][0][3][0])*.25)
