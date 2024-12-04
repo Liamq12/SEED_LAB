@@ -139,8 +139,13 @@ void loop() {
           Serial.println("Turning Left");
           turnLeft();
           cycle = true;
+          end = false;
+          lock_loop = true;
+          run = false;
+          distanceError = 0;
+          angleError = 0;
+          startRight = false;
 #endif
-          end = true;
           analogWrite(9, 0);
           analogWrite(10, 0);
         } else if (input == "R") {
@@ -148,8 +153,13 @@ void loop() {
           Serial.println("Turning Right");
           turnRight();
           cycle = true;
+          end = false;
+          lock_loop = true;
+          run = false;
+          distanceError = 0;
+          angleError = 0;
+          startRight = true;
 #endif
-          end = true;
           analogWrite(9, 0);
           analogWrite(10, 0);
         } else if (input == "SR" || input == "SL") {
@@ -158,9 +168,11 @@ void loop() {
           if (input == "SL") {
             startRight = false;
           }
-        }else if(input == "G"){
+        } else if (input == "G") {
           cycle = false;
-        }else if(input == "S"){
+        } else if (input == "S") {
+          analogWrite(9, 0);
+          analogWrite(10, 0);
           delay(100000);
         } else {
           Serial.println("INVALID INPUT " + String(input));
@@ -294,6 +306,7 @@ void turnRight() {
   delay(425);
   analogWrite(9, 0);
   analogWrite(10, 0);
+  delay(500);
 }
 
 void turnLeft() {
@@ -301,9 +314,10 @@ void turnLeft() {
   digitalWrite(8, LOW);
   analogWrite(9, 200);
   analogWrite(10, 200);
-  delay(400);
+  delay(425);
   analogWrite(9, 0);
   analogWrite(10, 0);
+  delay(500);
 }
 
 /*
